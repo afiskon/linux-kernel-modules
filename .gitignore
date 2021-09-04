@@ -1,0 +1,8 @@
+*.swp
+*.cmd
+*.mod
+*.ko
+*.o
+*.mod.c
+*.order
+*.symvers
