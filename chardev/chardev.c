@@ -27,10 +27,12 @@ static ssize_t device_write(struct file *, const char __user *, size_t,
 /* Global variables are declared as static, so are global within the file. */
 
 static int major; /* major number assigned to our device driver */
+
+/* TODO FIXME should be atomic! */
 static int open_device_cnt = 0; /* Is device open?
                                  * Used to prevent multiple access to device */
 
-/* TODO FIXME get rid of global buffer + send PR. use kmalloc() and kfree() ! */
+/* TODO FIXME get rid of global buffer + send PR. use kmalloc() and kfree() + unlikely() */
 static char msg[BUF_LEN]; /* The msg the device will give when asked */
 static char *msg_ptr;
 
