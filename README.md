@@ -8,6 +8,7 @@ Experiments with Linux kernel modules. All modules were tested on:
 
 Recommended materials:
 
+- https://kernelnewbies.org/
 - https://github.com/sysprog21/lkmpg/
 - https://github.com/wendlers/rpi-kmod-samples
 - https://github.com/0xAX/linux-insides
