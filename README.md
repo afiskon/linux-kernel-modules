@@ -12,5 +12,5 @@ Recommended materials:
 - https://github.com/torvalds/linux/tree/master/Documentation
 - https://github.com/sysprog21/lkmpg/
 - https://github.com/wendlers/rpi-kmod-samples
+- https://github.com/ALIBERA/linux_raspberrypi_book
 - https://github.com/0xAX/linux-insides
-- More will be added
