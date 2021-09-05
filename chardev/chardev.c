@@ -30,7 +30,7 @@ static int major; /* major number assigned to our device driver */
 static int open_device_cnt = 0; /* Is device open?
                                  * Used to prevent multiple access to device */
 
-/* TODO FIXME get rid of global buffer! */
+/* TODO FIXME get rid of global buffer + send PR. use kmalloc() and kfree() ! */
 static char msg[BUF_LEN]; /* The msg the device will give when asked */
 static char *msg_ptr;
 
