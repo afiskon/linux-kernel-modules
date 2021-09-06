@@ -7,7 +7,11 @@ MODULE_AUTHOR("Aleksander Alekseev");
 MODULE_DESCRIPTION("A simple driver");
 
 static char* name = "%username%";
-module_param(name, charp, 0);
+
+// module_param(name, charp, 0);
+
+// S_IRUGO: everyone can read this sysfs entry
+module_param(name, charp, S_IRUGO);
 MODULE_PARM_DESC(name, "Enter your name");
 
 static int __init init(void) {
