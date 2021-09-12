@@ -67,7 +67,7 @@ static int device_open(struct inode *inode, struct file *file) {
         return -EBUSY;
 
     open_device_cnt++;
-    sprintf(msg, "I already told you %d times Hello world!\n", counter++);
+    sprintf(msg, "Dummy sensor value: %d\n", counter++);
     msg_ptr = msg;
 
     /* Increment the module usage count */
