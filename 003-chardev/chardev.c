@@ -1,31 +1,30 @@
-#include <linux/cdev.h>
-#include <linux/delay.h>
-#include <linux/device.h>
-#include <linux/fs.h>
 #include <linux/init.h>
-#include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/poll.h>
 
-#define DEVICE_NAME "chardev" /* Dev name as it appears in /proc/devices   */
-#define BUF_LEN 80 /* Max length of the message from the device */
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/irq.h>
 
-static int major; /* major number assigned to our device driver */
+#define DEVICE_NAME "chardev"
 
-/* TODO FIXME should be atomic! */
-static int open_device_cnt = 0; /* Is device open?
-                                 * Used to prevent multiple access to device */
-/* TODO FIXME get rid of global buffer + send PR. use kmalloc() and kfree() + unlikely() */
-static char msg[BUF_LEN]; /* The msg the device will give when asked */
-static char *msg_ptr;
+static int sensor_value = 0;
+static DEFINE_MUTEX(sensor_value_mtx);
+
+static int major;
 static struct class *cls;
+
+typedef struct ChardevPrivateData {
+    char buff[32];
+    int cnt;
+} ChardevPrivateData;
 
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
-static ssize_t device_read(struct file *, char __user *, size_t, loff_t *);
-static ssize_t device_write(struct file *, const char __user *, size_t,
-                            loff_t *);
+static ssize_t device_read(struct file *, char __user *,
+                           size_t, loff_t *);
+static ssize_t device_write(struct file *, const char __user *,
+                            size_t, loff_t *);
 
 static struct file_operations chardev_fops = {
     .read = device_read,
@@ -35,84 +34,88 @@ static struct file_operations chardev_fops = {
 };
 
 int init_module(void) {
+    struct device* dev;
     major = register_chrdev(0, DEVICE_NAME, &chardev_fops);
 
-    if (major < 0) {
-        pr_alert("Registering char device failed with %d\n", major);
-        return major;
+    if(major < 0) {
+        pr_alert("register_chrdev() failed: %d\n", major);
+        return -EINVAL;
     }
 
-    pr_info("I was assigned major number %d.\n", major);
+    pr_info("major = %d\n", major);
 
     cls = class_create(THIS_MODULE, DEVICE_NAME);
-    device_create(cls, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
+    if(IS_ERR(cls)) {
+        pr_alert("class_create() failed: %ld\n", PTR_ERR(cls));
+        return -EINVAL;
+    }
 
-    pr_info("Device created on /dev/%s\n", DEVICE_NAME);
+    dev = device_create(cls, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
+    if(IS_ERR(dev)) {
+        pr_alert("device_create() failed: %ld\n", PTR_ERR(dev));
+        return -EINVAL;
+    }
 
+    pr_info("/dev/%s created\n", DEVICE_NAME);
     return 0;
 }
 
 void cleanup_module(void) {
     device_destroy(cls, MKDEV(major, 0));
     class_destroy(cls);
-
-    /* Unregister the device */
     unregister_chrdev(major, DEVICE_NAME);
 }
 
 static int device_open(struct inode *inode, struct file *file) {
-    static int counter = 0;
+    ChardevPrivateData* pd;
+    int val;
 
-    if (open_device_cnt)
-        return -EBUSY;
+    if(!try_module_get(THIS_MODULE)) {
+        pr_alert("try_module_get() failed\n");
+        return -EINVAL;
+    }
 
-    open_device_cnt++;
-    sprintf(msg, "Dummy sensor value: %d\n", counter++);
-    msg_ptr = msg;
+    pd = kmalloc(sizeof(ChardevPrivateData), GFP_KERNEL);
 
-    /* Increment the module usage count */
-    try_module_get(THIS_MODULE);
+    mutex_lock(&sensor_value_mtx);
+    val = sensor_value;
+    sensor_value++;
+    mutex_unlock(&sensor_value_mtx);
+
+    sprintf(pd->buff, "Dummy sensor value: %d\n", val);
+    pd->cnt = 0;
+    file->private_data = pd;
     return 0;
 }
 
 static int device_release(struct inode *inode, struct file *file) {
-    open_device_cnt--; /* We're now ready for our next caller */
-
-    /* Decrement the module usage count */
+    kfree(file->private_data);
     module_put(THIS_MODULE);
     return 0;
 }
 
-static ssize_t device_read(struct file *filp, /* see include/linux/fs.h   */
-                           char __user *buffer, /* buffer to fill with data */
-                           size_t length, /* length of the buffer     */
+static ssize_t device_read(struct file *file,
+                           char __user *buffer,
+                           size_t length,
                            loff_t *offset) {
-    /* Number of bytes actually written to the buffer */
     int bytes_read = 0;
+    ChardevPrivateData* pd = file->private_data;
 
-    /* If we are at the end of message, return 0 signifying end of file. */
-    if (*msg_ptr == 0)
-        return 0;
-
-    /* Actually put the data into the buffer */
-    while (length && *msg_ptr) {
-        /* The buffer is in the user data segment, not the kernel
-         * segment so "*" assignment won't work.  We have to use
-         * put_user which copies data from the kernel data segment to
-         * the user data segment.
-         */
-        put_user(*(msg_ptr++), buffer++);
-
-        length--;
+    while(length && (pd->buff[pd->cnt] != '\0')) {
+        if(put_user(pd->buff[pd->cnt], buffer++) != 0)
+            return -EINVAL;
+        pd->cnt++;
         bytes_read++;
+        length--;
     }
 
-    /* Return the number of bytes put into the buffer. */
     return bytes_read;
 }
 
-static ssize_t device_write(struct file *filp, const char __user *buff,
-                            size_t len, loff_t *off) {
+static ssize_t device_write(struct file *filp,
+                            const char __user *buff,
+                            size_t len,
+                            loff_t *off) {
     pr_alert("device_write() is not implemented\n");
     return -EINVAL;
 }
