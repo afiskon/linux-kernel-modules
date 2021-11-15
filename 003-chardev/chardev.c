@@ -76,6 +76,11 @@ static int device_open(struct inode *inode, struct file *file) {
     }
 
     pd = kmalloc(sizeof(ChardevPrivateData), GFP_KERNEL);
+    if(pd == NULL) {
+        pr_alert("kmalloc() faied\n");
+        module_put(THIS_MODULE);
+        return -EINVAL;
+    }
 
     mutex_lock(&sensor_value_mtx);
     val = sensor_value;
