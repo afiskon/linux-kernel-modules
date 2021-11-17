@@ -77,7 +77,7 @@ static int device_open(struct inode *inode, struct file *file) {
 
     pd = kmalloc(sizeof(ChardevPrivateData), GFP_KERNEL);
     if(pd == NULL) {
-        pr_alert("kmalloc() faied\n");
+        pr_alert("kmalloc() failed\n");
         module_put(THIS_MODULE);
         return -EINVAL;
     }
