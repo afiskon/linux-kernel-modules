@@ -26,8 +26,8 @@ static irqreturn_t button_isr(int irq, void *data) {
 }
 
 int init_module(void) {
-	int ret;
-	pr_info("%s\n", __func__);
+    int ret;
+    pr_info("%s\n", __func__);
 
     ret = gpio_request_array(buttons, ARRAY_SIZE(buttons));
     if (ret) {
@@ -56,9 +56,9 @@ int init_module(void) {
 }
 
 void cleanup_module(void) {
-	pr_info("%s\n", __func__);
+    pr_info("%s\n", __func__);
 
-	cancel_work_sync(&buttonwork);
+    cancel_work_sync(&buttonwork);
     free_irq(button_irq, NULL);
     gpio_free_array(buttons, ARRAY_SIZE(buttons));
 }
