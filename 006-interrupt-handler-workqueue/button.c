@@ -11,7 +11,7 @@ static struct gpio buttons[] = {
 
 static void bottomhalf_work_fn(struct work_struct *work) {
     pr_info("Bottom half work starts\n");
-    mdelay(500);
+    msleep(500);
     pr_info("Bottom half work ends\n");
 }
 
